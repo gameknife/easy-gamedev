@@ -1,0 +1,66 @@
+CCEffect %{
+  techniques:
+  - passes:
+    - vert: vs
+      frag: fs
+      depthStencilState:
+        depthTest: true
+        depthWrite: true
+      properties:
+        texture: { value: black }
+        layertexture: { value: black }
+        terrainparam: { value: [0.0, 0, 0, 0] }
+}%
+
+CCProgram vs %{
+  precision highp float;
+
+  #include <cc-global>
+  #include <cc-local>
+
+  in vec3 a_position;
+  in vec2 a_uv0;
+  out vec2 v_uv0;
+  out vec4 v_data;
+
+  uniform UNLIT {
+    vec4 terrainparam;
+  };
+  uniform sampler2D texture;
+
+  void main () {
+
+    float heightbase = texture2D(texture, a_uv0).r;
+    vec3 origin = a_position + vec3(0.0,heightbase * terrainparam.x,0.0);
+
+    vec4 pos = vec4(origin,1.0);
+    v_uv0 = a_uv0;
+    v_data = vec4(heightbase,0.5,heightbase,heightbase);
+    gl_Position = cc_matViewProj * cc_matWorld * pos;
+  }
+}%
+
+
+CCProgram fs %{
+  precision highp float;
+
+  #include <cc-global>
+
+  in vec2 v_uv0;
+  in vec4 v_data;
+
+  uniform sampler2D texture;
+  uniform sampler2D layertexture;
+
+  void main () {
+    vec4 data = texture2D(texture, v_uv0);
+    vec4 albedo = texture2D(layertexture, v_data.xy);
+
+    // wireframe
+    vec2 gridvalue = fract(v_uv0.xy * 100.0);
+    vec2 grid = smoothstep( vec2(0.9,0.9), vec2(0.95,0.95), gridvalue);
+    float darken = (1.0 - grid.x) * (1.0 - grid.y);
+    darken = 0.5 + darken * 0.5;
+    gl_FragColor = albedo * darken;
+  }
+}%

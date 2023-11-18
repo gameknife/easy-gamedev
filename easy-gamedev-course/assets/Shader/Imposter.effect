@@ -1,0 +1,187 @@
+// Copyright (c) 2017-2018 Xiamen Yaji Software Co., Ltd.  
+
+CCEffect %{
+  techniques:
+  - passes:
+    - vert: vs
+      frag: fs
+      depthStencilState:
+        depthTest: true
+        depthWrite: true
+      rasterizerState:
+        cullMode: none
+      properties:
+        texture: { value: black }
+        basecolor: { value: [1,1,1,1], editor: { type: color } }
+        fogcolor: { value: [1,1,1,1], editor: { type: color } }
+}%
+
+
+CCProgram vs %{
+  precision highp float;
+
+  #include <cc-global>
+  #include <cc-local>
+
+  in vec3 a_position;
+
+  out vec4 v_color;
+  in vec4 a_uv0;
+  out vec2 v_uv0;
+  out vec2 v_uv1;
+  out vec4 v_worldpos;
+  out vec4 v_vspos;
+
+  void main () {
+    vec4 pos = vec4(a_position, 1);
+
+    pos = cc_matWorld * pos;
+    v_worldpos = pos;
+
+    float scale = a_uv0.z * 0.25 + 0.75;
+    pos.xyz += normalize(cc_matViewInv[0].xyz) * (a_uv0.x - 0.5) * scale * 2.0;
+    pos.xyz += normalize(cc_matViewInv[1].xyz) * (a_uv0.y - 0.5) * scale * 2.0;
+    pos.xyz += a_uv0.y * vec3(0.0,scale * 2.0,0.0);
+
+
+    pos =  cc_matViewProj * pos;
+    
+    v_uv0 = a_uv0.xy;
+    v_uv1 = a_position.xz / 200.0 + vec2(0.5,0.5);
+    vec3 lightdir = normalize(vec3(1.0,-0.25,0.0));
+    v_color = cc_matView * vec4(lightdir,0.0);
+    v_vspos = cc_matView * v_worldpos;
+
+    gl_Position = pos;
+  }
+}%
+
+
+CCProgram fs %{
+  precision highp float;
+  
+  #include <cc-global>
+  #include <texture>
+
+  in vec4 v_color;
+  in vec2 v_uv0;
+  in vec2 v_uv1;
+  in vec4 v_worldpos;
+  in vec4 v_vspos;
+  uniform sampler2D texture;
+
+  uniform UNLITPS {
+    vec4 basecolor;
+    vec4 fogcolor;
+  };
+
+  float rand(vec2 n) { 
+	return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
+}
+
+float noise(vec2 p){
+	vec2 ip = floor(p);
+	vec2 u = fract(p);
+	u = u*u*(3.0-2.0*u);
+	
+	float res = mix(
+		mix(rand(ip),rand(ip+vec2(1.0,0.0)),u.x),
+		mix(rand(ip+vec2(0.0,1.0)),rand(ip+vec2(1.0,1.0)),u.x),u.y);
+	return res*res;
+}
+
+  vec3 rO = vec3(0.0); // The ray origin
+
+  vec3 sO = vec3(0.0, 0.0, -5.0); // The sphere origin
+  float sR = 2.0; // The sphere radius
+  float sR2 = 2.0*2.0; // The sphere radius squared
+  float sR3 = 1.9*1.9; // The sphere radius squared
+
+vec4 ColorRamp2Exp(float factor, float power, float pos0, float pos1, vec4 color0, vec4 color1){
+    vec4 outColor = color0;
+    if(factor >= pos0 && factor < pos1)
+    {
+        float localFactor = (factor - pos0)/(pos1 - pos0);
+        outColor =  mix(color0, color1, pow(localFactor, power));
+    }
+    else if (factor > pos1)
+    {
+        outColor = color1;
+    }
+    return outColor;
+}
+
+  void main () {
+    vec4 final = vec4(1, 1, 1, 1);
+
+    vec2 uv = v_uv0 - vec2(0.5);
+    vec3 rD = normalize(vec3(uv.x, uv.y, -1.0)); // Ray direction vector
+
+    vec3 col = vec3(0.2); // Color output
+    
+    vec3 A = sO - rO; // Difference between ray origin and sphere center
+    float B = dot(A, rD); // Lenght of vector A projected onto ray direction
+    float C2 = dot(A, A) - B*B; // The hypotenuse squared of triangle ABC
+    
+    // Check if ray has overshot sphere
+    if (C2 > sR2) {
+      discard;
+    }
+
+    // if (C2 > sR3) {
+    //   final.a = smoothstep(sR2, sR3, C2);
+    // }
+
+    float tH = sqrt(sR2-C2); // Find distance of intersection on sphere
+    float t = B - tH;
+    vec3 hitP = rO + rD * t; // Get point of intersection on sphere
+
+    // float n = noise(uv * 50.0);
+    // n = (n - 0.5) * 0.5;
+
+    vec3 normal = -normalize(hitP - sO); // Calculate normal from hit point
+    
+    col = -normal; // Color normal
+
+    // that'it display
+
+
+
+    float ndotl = dot(normal,v_color.rgb);
+    ndotl = sqrt(max(0.0, ndotl) * 0.9 + 0.1);
+    
+    vec4 data = texture2D(texture, v_uv1);
+    data.g = mix(data.g, min(1.0, data.g + 0.5), uv.y);
+    data.a = mix(data.a, 1.0, uv.y * 0.75 + 0.25);
+
+    float fresnel = max(0.0,1.0+normal.z);
+    float outline = max(0.0, pow(fresnel,2.0) ) * 1.0;
+    ndotl = min(1.0, ndotl + outline);
+
+    vec3 light = mix( vec3(0.02,0.03,0.1), vec3(0.3,0.4,0.9), data.g * data.g) + vec3(1.0,0.95,0.7) * 2.0 * ndotl * min(data.b,data.a);
+
+    final.rgb = light * basecolor.rgb * basecolor.rgb;
+
+
+
+
+     // fog
+    float linearZ = v_worldpos.y * 0.004;
+    float linearDepth = length(cc_cameraPos.xyz - v_worldpos.xyz) / 1200.0;
+    vec4 heightFog = ColorRamp2Exp(linearZ, 0.2, 0.0, 0.6, vec4(1,1,1,1), vec4(0));
+    vec4 distFog = ColorRamp2Exp(linearDepth, 2.0, 0.0, 0.5, vec4(0), vec4(1));
+    distFog *= min(vec4(1), heightFog * 5.0);
+
+    final.rgb = mix(final.rgb, fogcolor.rgb * fogcolor.rgb, distFog.rgb * fogcolor.a);
+
+    final *= 0.5;
+    final = sqrt(final);
+
+    final.a = -v_vspos.z / 500.0;
+    //final.rgb = sqrt(light * 0.25);
+    //final.rgb = vec3(outline,outline,outline);
+
+    //o.rgb = vec3(n);
+    gl_FragColor = final;
+  }
+}%

@@ -1,0 +1,17 @@
+{
+  "ver": "1.0.25",
+  "uuid": "caebc951-2fd3-4b6e-a75f-0d9b4d87221c",
+  "compiledShaders": [
+    {
+      "glsl1": {
+        "vert": "\nprecision highp float;\nuniform mat4 cc_matViewProj;\nuniform mat4 cc_matWorld;\nattribute vec3 a_position;\nattribute vec2 a_uv0;\nvarying vec2 v_uv0;\nvarying vec4 v_data;\nuniform vec4 terrainparam;\nuniform sampler2D texture;\nvoid main () {\n  float heightbase = texture2D(texture, a_uv0).r;\n  vec3 origin = a_position + vec3(0.0,heightbase * terrainparam.x,0.0);\n  vec4 pos = vec4(origin,1.0);\n  v_uv0 = a_uv0;\n  v_data = vec4(heightbase,0.5,heightbase,heightbase);\n  gl_Position = cc_matViewProj * cc_matWorld * pos;\n}",
+        "frag": "\nprecision highp float;\nvarying vec2 v_uv0;\nvarying vec4 v_data;\nuniform sampler2D texture;\nuniform sampler2D layertexture;\nvoid main () {\n  vec4 data = texture2D(texture, v_uv0);\n  vec4 albedo = texture2D(layertexture, v_data.xy);\n  vec2 gridvalue = fract(v_uv0.xy * 100.0);\n  vec2 grid = smoothstep( vec2(0.9,0.9), vec2(0.95,0.95), gridvalue);\n  float darken = (1.0 - grid.x) * (1.0 - grid.y);\n  darken = 0.5 + darken * 0.5;\n  gl_FragColor = albedo * darken;\n}"
+      },
+      "glsl3": {
+        "vert": "\nprecision highp float;\nuniform CCGlobal {\n  mat4 cc_matView;\n  mat4 cc_matViewInv;\n  mat4 cc_matProj;\n  mat4 cc_matProjInv;\n  mat4 cc_matViewProj;\n  mat4 cc_matViewProjInv;\n  vec4 cc_cameraPos;\n  vec4 cc_time;\n  mediump vec4 cc_screenSize;\n  mediump vec4 cc_screenScale;\n};\nuniform CCLocal {\n  mat4 cc_matWorld;\n  mat4 cc_matWorldIT;\n};\nin vec3 a_position;\nin vec2 a_uv0;\nout vec2 v_uv0;\nout vec4 v_data;\nuniform UNLIT {\n  vec4 terrainparam;\n};\nuniform sampler2D texture;\nvoid main () {\n  float heightbase = texture2D(texture, a_uv0).r;\n  vec3 origin = a_position + vec3(0.0,heightbase * terrainparam.x,0.0);\n  vec4 pos = vec4(origin,1.0);\n  v_uv0 = a_uv0;\n  v_data = vec4(heightbase,0.5,heightbase,heightbase);\n  gl_Position = cc_matViewProj * cc_matWorld * pos;\n}",
+        "frag": "\nprecision highp float;\nuniform CCGlobal {\n  mat4 cc_matView;\n  mat4 cc_matViewInv;\n  mat4 cc_matProj;\n  mat4 cc_matProjInv;\n  mat4 cc_matViewProj;\n  mat4 cc_matViewProjInv;\n  vec4 cc_cameraPos;\n  vec4 cc_time;\n  mediump vec4 cc_screenSize;\n  mediump vec4 cc_screenScale;\n};\nin vec2 v_uv0;\nin vec4 v_data;\nuniform sampler2D texture;\nuniform sampler2D layertexture;\nvoid main () {\n  vec4 data = texture2D(texture, v_uv0);\n  vec4 albedo = texture2D(layertexture, v_data.xy);\n  vec2 gridvalue = fract(v_uv0.xy * 100.0);\n  vec2 grid = smoothstep( vec2(0.9,0.9), vec2(0.95,0.95), gridvalue);\n  float darken = (1.0 - grid.x) * (1.0 - grid.y);\n  darken = 0.5 + darken * 0.5;\n  gl_FragColor = albedo * darken;\n}"
+      }
+    }
+  ],
+  "subMetas": {}
+}

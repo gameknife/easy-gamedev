@@ -1,0 +1,31 @@
+{
+  "__type__": "cc.Material",
+  "_name": "Imposter",
+  "_objFlags": 0,
+  "_native": "",
+  "_effectAsset": {
+    "__uuid__": "6cbb68b4-f0b8-4209-85d1-5a9d888f4f88"
+  },
+  "_techniqueIndex": 0,
+  "_techniqueData": {
+    "0": {
+      "props": {
+        "fogcolor": {
+          "__type__": "cc.Color",
+          "r": 197,
+          "g": 222,
+          "b": 255,
+          "a": 0
+        },
+        "basecolor": {
+          "__type__": "cc.Color",
+          "r": 106,
+          "g": 141,
+          "b": 97,
+          "a": 255
+        }
+      },
+      "defines": {}
+    }
+  }
+}
